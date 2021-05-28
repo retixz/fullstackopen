@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, cloneElement } from "react";
 import Filter from "./components/Filter";
 import PersonForm from "./components/PersonForm";
-import SearchResult from "./components/SearchResult";
-import AllPersons from "./components/AllPersons";
-import axios from "axios";
+import PersonsDisplay from "./components/PersonsDisplay";
+import personService from "./services/persons";
 
 const App = () => {
   const [persons, setPersons] = useState([]);
@@ -13,9 +12,7 @@ const App = () => {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    axios.get("http://localhost:3001/persons").then((response) => {
-      setPersons(response.data);
-    });
+    personService.getAll().then((persons) => setPersons(persons));
   }, []);
 
   const newEntry = (event) => {
@@ -24,16 +21,25 @@ const App = () => {
       // Check if already exists in phonebook
       alert(`${newName} is already added to phonebook`);
     } else if (persons.find((person) => person.number === newNumber)) {
-      alert(`${newNumber} is already added to phonebook`);
+      if (window.confirm(`you want to update ?`)) {
+        //TODO () => updateEntry;
+      }
     } else {
       // Add new person
-      const person = { name: newName, number: newNumber };
-      setPersons(persons.concat(person));
+      const person = {
+        name: newName,
+        number: newNumber,
+        id: persons.length + 1,
+      };
+      personService.create(person).then((response) => {
+        setPersons(persons.concat(person));
+      });
     }
     setNewName("");
     setNewNumber("");
   };
 
+  // TODO const updateEntry = () => {};
   const handleName = (event) => {
     setNewName(event.target.value);
   };
@@ -42,13 +48,25 @@ const App = () => {
     setNewNumber(event.target.value);
   };
 
+  const handleDelete = (id) => {
+    if (
+      window.confirm(
+        `Delete ${persons.find((person) => person.id === id).name} ?`
+      )
+    )
+      personService.deleteEntry(id).then(() => {
+        setPersons(persons.filter((person) => person.id !== id)); //delete from all persons display
+        setNewResults(newResults.filter((person) => person.id !== id)); //delete from search result display
+      });
+  };
+
   const handleSearch = (event) => {
+    setSearch(event.target.value);
     const filter = event.target.value.toUpperCase();
     const results = persons.filter((person) =>
       person.name.toUpperCase().includes(filter)
     );
 
-    setSearch(filter);
     if (results) setNewResults(results);
   };
 
@@ -68,9 +86,9 @@ const App = () => {
       <h2>Numbers</h2>
 
       {newResults && search ? (
-        <SearchResult newResults={newResults} />
+        <PersonsDisplay persons={newResults} handleDelete={handleDelete} /> //Display search results
       ) : (
-        <AllPersons persons={persons} />
+        <PersonsDisplay persons={persons} handleDelete={handleDelete} /> //Display all persons
       )}
     </div>
   );
