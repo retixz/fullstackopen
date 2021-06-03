@@ -20,9 +20,13 @@ const App = () => {
 
   const newEntry = (event) => {
     event.preventDefault();
-    if (persons.find((person) => person.name === newName)) {
+    if (
+      persons.find(
+        (person) => person.name === newName || person.number === newNumber
+      )
+    ) {
       // Check if already exists in phonebook
-      persons.map((person) => {
+      persons.forEach((person) => {
         if (person.name === newName && person.number !== newNumber) {
           if (
             window.confirm(
@@ -32,37 +36,51 @@ const App = () => {
             const newObject = { ...person, number: newNumber };
             personService
               .updateNumber(person.id, newObject)
-              .then((updatedPerson) =>
+              .then((updatedPerson) => {
                 setPersons(
                   persons.map((person) =>
                     person.name !== newName ? person : updatedPerson
                   )
-                )
-              );
+                );
+              })
+              .catch((error) => {
+                setErrorMessage(error.response.data.error);
+                setTimeout(() => {
+                  setErrorMessage(null);
+                }, 5000);
+              });
           }
-        } else if (person.number === newNumber)
-          alert(`${newName} is already added to phonebook`);
+        } else if (person.name !== newName && person.number === newNumber) {
+          setErrorMessage(`${newNumber} is already added to phonebook`);
+          setTimeout(() => {
+            setErrorMessage(null);
+          }, 5000);
+        }
       });
     } else {
       // Add new person
       const person = {
         name: newName,
         number: newNumber,
-        id: persons.length + 1,
       };
-      personService.create(person).then((response) => {
-        setPersons(persons.concat(person));
-        setErrorMessage("New person added");
-        setTimeout(() => {
-          setErrorMessage(null);
-        }, 5000);
-      });
+      personService
+        .create(person)
+        .then((response) => {
+          //Create new person and update UI
+          setPersons(persons.concat(person));
+          personService.getAll().then((persons) => setPersons(persons));
+        })
+        .catch((error) => {
+          setErrorMessage(error.response.data.error);
+          setTimeout(() => {
+            setErrorMessage(null);
+          }, 5000);
+        });
     }
     setNewName("");
     setNewNumber("");
   };
 
-  // TODO const updateEntry = () => {};
   const handleName = (event) => {
     setNewName(event.target.value);
   };
